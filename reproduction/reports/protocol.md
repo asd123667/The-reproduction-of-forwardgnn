@@ -1,6 +1,6 @@
 # ForwardGNN 复现协议（protocol）
 
-- 版本：v1.0（2026-09-21）
+- 版本：v1.1（2026-09-22，对齐复现计划 v3；变更明细见 CHANGELOG 同日条目）
 - 状态：步骤 1 产出。环境、数据、训练均未开始；本文所有"目标数值"均来自论文原文，"复现值"一栏均为空。
 - 有效范围：本协议是当前唯一有效的复现执行依据。总体计划的验收框架（复现三层级、逐步验收清单）继续沿用；计划中与 LR 路线相关的内容已作废。
 
@@ -99,8 +99,8 @@ FF-SymBa、CaFo、PEPITA、ForwardGNN-SymBa 在官方仓库中无实现（已在
 | 优化器 | Adam，lr=0.001，weight decay=0.0005 | [P-B]；lr=[S] `LR=0.001` ✅；wd=5e-4 为代码硬编码（`train_forward.py` 各 build 函数）✅ |
 | 最大轮数 | 1000 | [P-B] = [S] `EPOCHS=1000` ✅（注意 `train_forward.py` argparse 默认 300，**必须显式传 1000**，脚本已传） |
 | 验证频率 | 每 2 个 epoch | [S] `VAL_EVERY=2`（论文未写明该值，以脚本为准，记为脚本补充信息） |
-| 早停耐心 | 100 | [P-B] = [S] `PATIENCE=100` ✅ |
-| 重复次数 | 5 次运行（`--num-runs 5 --seed 100`，每次 run 递增种子） | [P-4.1]（五个随机划分取均值±标准差）= [S] ✅；划分×种子的确切组合方式在步骤 2 数据核对时记录（§9 待核对项 1） |
+| 早停耐心 | 100，按**验证次数**计（val-every=2 → 约 200 epoch 无改善才停） | [P-B] = [S] `PATIENCE=100` ✅；计数语义见 `train_utils.py` EarlyStopping（每次验证步进一次） |
+| 重复次数 | `--num-runs 5 --seed 100` ↔ **5 个官方划分（split 0–4）**：run_i 即 split_i，每 run 种子 = seed×101 + run_i×3（10100/10103/10106/10109/10112） | [P-4.1]（五个随机划分）= [C] `SeedManager`（train_utils.py:40）、两入口 `split_i=run_i` ✅ 2026-09-22 代码核实；**num-runs>5 不等于更多独立种子**（v3 §七） |
 | GNN 层数 | Table 3 覆盖 1/2/3/4 层 | [P]；BP 脚本已含 1–4 层循环，**SF 等前向脚本只写了 4 层，复现 Table 3 需自行扫描层数** |
 | GCN 归一化 | 加自环 + 对称归一化 | [P-B]（步骤 3 核对实现，§9 待核对项 3） |
 | SAGE 聚合 | mean | [P-B]（同上待核对） |
@@ -110,6 +110,8 @@ FF-SymBa、CaFo、PEPITA、ForwardGNN-SymBa 在官方仓库中无实现（已在
 | 温度 τ | 1.0 | [P-B] = [C] `--temperature` 默认 1.0 ✅ |
 | 虚拟节点边方向 | 双向 | [P 主文] = [S] `--aug-edge-direction bidirection` ✅（F.5 消融用 unidirection，首轮不做） |
 | 梯度裁剪 | max-norm 1.0 | [C] `--grad-max-norm` 默认 1.0（论文未提；记为代码补充信息，步骤 3 核对是否对结果敏感） |
+| epochs 语义 | SF：**每层**最多 1000 次局部更新（两层 ≈ 2000 次）；BP：全网共 1000 次更新上限 | [C] gnn_sf.py 逐层训练循环；相同 epochs 不代表相同更新量或耗时（v3 计划 §3.1） |
+| GAT 确定性 | GCN/SAGE 确定性训练；GAT 代码显式关闭确定性 | [C] `set_seed(deterministic="gat" not in model.lower())`，2026-09-22 核实 |
 | 显存口径 | 模型参数 + 激活 + 梯度 + Adam 一/二阶矩 | [P-B]；论文用 H100/CentOS。本机数值只做**相对趋势**比较（SF 恒定 vs BP 随层数增长），绝对值必须连同硬件一起报告 |
 
 ## 7. 论文与官方代码的差异/缺失清单（步骤 1 结论）
@@ -122,7 +124,9 @@ FF-SymBa、CaFo、PEPITA、ForwardGNN-SymBa 在官方仓库中无实现（已在
 | 4 | `train_forward.py` epochs 默认 300，与论文 1000 不符 | 忘传参数会得到错误协议 | 一律走脚本/显式 `--epochs 1000` |
 | 5 | 论文未写明验证频率与梯度裁剪 | 协议以代码实参为准 | `VAL_EVERY=2`、`grad-max-norm=1.0`，已在 §6 标注为脚本/代码补充信息 |
 | 6 | 论文实验硬件（H100/CentOS）与本机不同 | 显存绝对值不可直接比 | 只比较相对趋势，硬件信息随每次运行记录 |
-| 7 | 官方安装脚本 PyG 经 conda 通道安装且注释标明 Linux/OSX | 本机为 Windows，安装可能失败 | 步骤 2 时按实际可用方式（conda 或 pip）安装并记录最终版本；属环境差异，不改算法协议 |
+| 7 | 官方安装脚本 PyG 经 conda 通道安装且注释标明 Linux/OSX | 本机为 Windows，安装可能失败 | 已改用 WSL2，官方脚本原样安装成功（environment.json）；差异已销号 |
+| 8 | 官方代码**不落盘** best.pt：早停最佳参数仅保留在内存（`EarlyStopping.best_model_state_dict`） | 旧计划"保存和加载模型文件"类验收不适用 | 短跑验收 = 进程正常退出 + stdout + 结果 JSON；模型持久化属后补功能（v3 计划 §6.3） |
+| 9 | 结果文件按 `task-model-num_layers-run_i-seed` 命名，已存在即跳过（除非 `--overwrite-result`）；文件名不含 lr/epochs/hidden | 改超参会静默复用旧结果 | 每套配置使用独立 exp-setting（命名规范：`smoke-bp-coraML-L2-v1`、`paper-bp-coraML-L2-v1` 等，v3 计划 §五） |
 
 已排除的疑点（核对过、无差异）：FF 负样本数（#7 条目上方 §6 已述）、GAT 头数、权重衰减、θ、τ、划分比例。
 
@@ -130,9 +134,10 @@ FF-SymBa、CaFo、PEPITA、ForwardGNN-SymBa 在官方仓库中无实现（已在
 
 ### 8.1 指标
 
-- 节点分类：测试 Accuracy（%），报告 5 次运行的均值±标准差（官方代码输出格式即为 `mean±std`）。
+- 节点分类：测试 Accuracy（%），报告 5 个划分（split 0–4）的均值±标准差。
+- **单位差异（2026-09-22 代码核实）**：SF 返回百分数（gnn_sf.py:259 `acc = 100.0 * ...`），BP 的 `eval_node_classification` 返回 0–1 比例（eval_utils.py:14）。汇总时统一新增 `accuracy_pct` 字段，原始值保留不改写。
 - 链接预测：测试 ROC-AUC（%）。
-- 显存与耗时：按总体计划步骤 6 要求另行测量记录（本协议先固定口径为论文 App. B 口径 + 本机硬件说明）。
+- 显存与耗时：按 v3 计划步骤 7 要求另行测量记录（本协议先固定口径为论文 App. B 口径 + 本机硬件说明）。
 
 ### 8.2 与论文对齐的判据（在看任何测试结果之前约定）
 
@@ -155,20 +160,24 @@ FF-SymBa、CaFo、PEPITA、ForwardGNN-SymBa 在官方仓库中无实现（已在
 
 | # | 待核对项 | 计划处理时机 |
 | --- | --- | --- |
-| 1 | 官方 datasplits 下载后确实被加载（而非本地重新随机生成）；划分×种子组合方式 | 步骤 2 数据检查，证据存 `checks/` |
+| 1 | 官方 datasplits 下载后确实被加载（而非本地重新随机生成）；划分×种子组合方式 | ✅ 2026-09-21/22 关闭：划分加载自 datasplits 目录且比例精确吻合（environment.json）；组合方式 = run_i↔split_i、种子 10100+3·run_i（§6） |
 | 2 | 评估实现与论文一致（Accuracy / ROC-AUC 计算方式，`src/utils/eval_utils.py`） | 步骤 3 |
 | 3 | BP 路径与 App. B 一致性（GCN 归一化、SAGE mean、GAT 0.2 负斜率与自环） | 步骤 3 |
 | 4 | 显存测量：论文口径在官方代码中如何体现，本机如何测量 | 步骤 6 之前 |
-| 5 | Windows 下 PyTorch 1.13.1 + PyG 2.2.0 可安装性；不可行时的替代版本 | 步骤 2 |
+| 5 | Windows 下 PyTorch 1.13.1 + PyG 2.2.0 可安装性；不可行时的替代版本 | ✅ 2026-09-21 关闭：改用 WSL2，官方脚本原样安装成功（environment.json） |
+| 6 | CoraML 5 组划分互斥性与全节点覆盖 + 划分文件校验值 | ✅ 2026-09-22 关闭：`reports/split_manifest_cora_ml.json`（15 个文件，全部互斥、并集 = 2995） |
+| 7 | SF 方法断言：虚拟节点 N+C、类别边仅由 train_mask 生成、双向模式边数、逐层优化器、层间 detach、逐节点 L2 归一化、虚拟节点初始特征 nn.Embedding→detach、概率融合推理 | ✅ 2026-09-22 关闭（SF 部分）：`reports/method_checks.md`，18/18 断言通过；FF-VN/FF-LA/Top2Input/Top2Loss 同类检查留到步骤 8 前（闸门 A3 完整版） |
 
 ## 10. 与总体计划的衔接
 
-| 总体计划步骤 | 在本协议下的内容 | 状态 |
+| v3 计划步骤 / 闸门 | 在本协议下的内容 | 状态 |
 | --- | --- | --- |
-| 步骤 1 确定复现对象 | 即本文档 + CHANGELOG + 登记表 + 快照校验 | ✅ 2026-09-21 |
-| 步骤 2 环境与数据 | conda/pip 环境、数据自动下载、datasplits 下载与加载验证、硬件记录 | 未开始 |
-| 步骤 3 核对与最小验证 | §9 之 2、3 项静态核对 + 首次极小规模运行 | 未开始 |
-| 步骤 4 短跑 | E01 | 未开始 |
-| 步骤 5 BP 基线 | E02 | 未开始 |
-| 步骤 6 正式对照 | E03 及 Table 3 全网格（按 P0 范围） | 未开始 |
-| 步骤 7 联邦模拟 | 不在本协议范围（届时另立协议） | 未开始 |
+| 步骤 1 / 闸门 A0（协议锁定） | 本文档 + CHANGELOG + 登记表 + 快照校验 | ✅ 2026-09-21，v1.1 于 09-22 对齐 v3 |
+| 步骤 2（兼容环境） | WSL2 conda 环境、依赖（含 torch_sparse/torch_scatter）、--help、device、硬件记录 | ✅ 2026-09-21/22（environment.json） |
+| 步骤 3（数据与划分） | 数据下载、官方划分加载、互斥/覆盖审计、划分校验值 | ✅ 2026-09-21/22（split_manifest_cora_ml.json） |
+| 步骤 4 / 闸门 A1（官方代码通路） | E01a BP smoke + E01b SF smoke（20 epochs、1 run、独立 exp-setting） | 未开始 |
+| 步骤 5 / 闸门 A3（方法完整性） | SF 方法检查（§9 之 7）；随后覆盖 FF-VN/FF-LA/Top2Input/Top2Loss | 未开始 |
+| 步骤 6 / 闸门 A2（核心 SF/BP） | E02 BP 正式 + E03 SF 正式（5 个划分对照，accuracy_pct 统一）；附未训练/多数类诊断基线 | 未开始 |
+| 步骤 7（显存/时间/深度） | 1–4 层显存与时间扩展，M(L)/M(1) 相对比例 | 未开始 |
+| 步骤 8 / 闸门 A4（论文主结果） | P0/P1 范围扩展（§2）：多数据集、多骨干、FF/TopDown、链接预测 | 未规划 |
+| 联邦扩展（v3 §九，阶段 C） | 不在本协议范围（另立协议） | 未开始 |

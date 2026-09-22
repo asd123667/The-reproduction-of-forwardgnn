@@ -1,0 +1,125 @@
+{
+  "checks": {
+    "aug_nodes_eq_N_plus_C": {
+      "ok": true,
+      "detail": "N=2995, C=7, aug=3002"
+    },
+    "virtual_node_count_eq_C": {
+      "ok": true,
+      "detail": "virtual=7"
+    },
+    "class_edges_count_bidirection": {
+      "ok": true,
+      "detail": "virtual_edges=3832, expected=2*1916=3832"
+    },
+    "class_edges_only_own_class": {
+      "ok": true,
+      "detail": "mismatched_train_nodes=0"
+    },
+    "class_edges_only_train_nodes": {
+      "ok": true,
+      "detail": "val/test 节点未出现在任何虚拟节点边中"
+    },
+    "virtual_degree_per_class": {
+      "ok": true,
+      "detail": "{0: {'train_count': 219, 'virtual_degree': 438}, 1: {'train_count': 264, 'virtual_degree': 528}, 2: {'train_count': 294, 'virtual_degree': 588}, 3: {'train_count': 280, 'virtual_degree': 560}, 4: {'train_count': 553, 'virtual_degree': 1106}, 5: {'train_count': 125, 'virtual_degree': 250}, 6: {'train_count': 181, 'virtual_degree': 362}}"
+    },
+    "logits_shape": {
+      "ok": true,
+      "detail": "shape=(1916, 7), expected=(1916, 7)"
+    },
+    "logits_is_dot_product": {
+      "ok": true,
+      "detail": "max_diff=1.49e-08"
+    },
+    "temperature_is_1": {
+      "ok": true,
+      "detail": "T=1.0"
+    },
+    "loss_is_cross_entropy": {
+      "ok": true,
+      "detail": "CrossEntropyLoss"
+    },
+    "optimizer0_only_layer0": {
+      "ok": true,
+      "detail": "|o0|=2, |p0|=2"
+    },
+    "optimizer1_only_layer1": {
+      "ok": true,
+      "detail": "|o1|=2"
+    },
+    "optimizer_param_sets_disjoint": {
+      "ok": true,
+      "detail": "overlap=0"
+    },
+    "hook_captured_layer1_first_forward": {
+      "ok": true,
+      "detail": "拦截到 layer1 的首次前向"
+    },
+    "layer1_input_detached": {
+      "ok": true,
+      "detail": "layer1 首次前向输入 requires_grad=False"
+    },
+    "layer0_learns_in_own_phase": {
+      "ok": true,
+      "detail": "第 1 层参数在自己训练阶段确实改变"
+    },
+    "layer0_frozen_during_layer1": {
+      "ok": true,
+      "detail": "第 2 层训练期间第 1 层参数逐比特不变"
+    },
+    "fusion_uses_all_layers": {
+      "ok": true,
+      "detail": "accumulated_probs=2 层（epochs=2 的调试训练，两层 acc 相同属正常）"
+    }
+  },
+  "evidence": {
+    "per_class": {
+      "0": {
+        "train_count": 219,
+        "virtual_degree": 438
+      },
+      "1": {
+        "train_count": 264,
+        "virtual_degree": 528
+      },
+      "2": {
+        "train_count": 294,
+        "virtual_degree": 588
+      },
+      "3": {
+        "train_count": 280,
+        "virtual_degree": 560
+      },
+      "4": {
+        "train_count": 553,
+        "virtual_degree": 1106
+      },
+      "5": {
+        "train_count": 125,
+        "virtual_degree": 250
+      },
+      "6": {
+        "train_count": 181,
+        "virtual_degree": 362
+      }
+    },
+    "fusion_acc_test": {
+      "fused": 29.04841402337229,
+      "single_layer0": 29.04841402337229
+    },
+    "source_refs": {
+      "virtual_nodes": "gnn_sf.py:287-293",
+      "class_edges_only_train": "gnn_sf.py:151,332-343",
+      "bidirection": "gnn_sf.py:335-337",
+      "logits_dot_product": "gnn_sf.py:65,244",
+      "temperature": "gnn_sf.py:66-67",
+      "ce_loss": "gnn_sf.py:39,71",
+      "local_backward": "gnn_sf.py:70-75",
+      "per_layer_optimizer": "gnn_sf.py:36-38",
+      "per_layer_loop_earlystop": "gnn_sf.py:158-195",
+      "detach_to_next_layer": "gnn_sf.py:212-215",
+      "prob_fusion": "gnn_sf.py:236-255"
+    }
+  }
+}

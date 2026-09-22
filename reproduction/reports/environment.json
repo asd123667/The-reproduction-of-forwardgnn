@@ -27,7 +27,14 @@
     "numpy": "1.19.2",
     "scipy": "1.6.2",
     "scikit-learn": "1.2.1",
-    "tqdm": "4.67.1"
+    "tqdm": "4.67.1",
+    "torch_sparse": "0.6.17",
+    "torch_scatter": "2.1.1",
+    "torch_cluster": "1.6.1"
+  },
+  "optional_deps_missing": {
+    "torch_spline_conv": "缺失，GCN/SAGE/GAT 不需要",
+    "pyg_lib": "缺失，GCN/SAGE/GAT 不需要"
   },
   "verification_2026_09_21": {
     "torch_cuda_available": true,
@@ -43,6 +50,19 @@
       "source": "github.com/NamyongPark/forwardgnn-datasplits，150 个划分文件已装入 ~/forwardgnn-run/datasplits/"
     },
     "features_finite": true
+  },
+  "verification_2026_09_22": {
+    "entry_help": "train_backprop.py / train_forward.py --help 均正常",
+    "device_resolution": "args.device = cuda:0（setup_cuda）",
+    "gatconv_gpu_forward": "OK（50 节点玩具图，输出 (50, 32)）",
+    "coraml_split_manifest": "reports/split_manifest_cora_ml.json：5 组划分两两互斥、并集=2995，15 个文件 SHA-256 已记录"
+  },
+  "required_env_vars": {
+    "CUBLAS_WORKSPACE_CONFIG": ":4096:8 —— GPU 运行必需：官方代码对 GCN/SAGE 启用确定性算法，CUDA>=10.2 下 cuBLAS 不设此变量会抛 RuntimeError（2026-09-22 最小用例实测确认）"
+  },
+  "smoke_runs_2026_09_22": {
+    "E01a_bp": "退出码 0，perf=0.290484（0-1 比例，=29.05%），train_epochs 19",
+    "E01b_sf": "退出码 0，两层各 20 epochs（train_epochs 19-19），单层 35.73%、两层融合 62.44%"
   },
   "locations": {
     "wsl_home": "/home/pyh",

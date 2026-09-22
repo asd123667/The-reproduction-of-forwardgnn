@@ -4,6 +4,64 @@
 
 ---
 
+## 2026-09-22（夜） ｜ v3 步骤 5（SF 部分）完成 ｜ 方法检查 18/18 通过
+
+**产出：** `checks/check_sf_method.py`、`reports/method_checks.md`、`reports/sf_method_checks.json`。
+
+**结论：** SF 实现与论文 §3.2 / 算法 2 一致，全部断言有"源码定位 + 运行时行为"双重证据：增强图 3002 = 2995+7 节点；虚拟边 3832 = 2×1916 且每个训练节点只连自己类别的虚拟节点（双向）、验证/测试节点无类别边、各类虚拟节点度 = 2×该类训练数；logits 为节点表示与类别表示的点积（误差 1.49e-08）、交叉熵局部损失、τ=1.0；两层优化器参数集互不相交且各管本层；**第 2 层训练期间第 1 层参数 SHA-256 逐比特不变**（层间无梯度/更新的直接证据）；layer1 输入 requires_grad=False（detach 链闭合）；推理 accumulated_probs 覆盖两层。
+
+**过程发现：** 官方代码以 `layer.forward(...)` 直接调用（gnn_sf.py:56/212/239），绕过 `Module.__call__`，标准 forward hook 不触发——检查脚本改用运行时包装拦截（未改官方代码）。此细节对日后 hook 类插桩（显存/计时）同样适用。
+
+**状态更新：** 协议 §9 之 7 的 SF 部分销号（FF-VN/FF-LA/Top2Input/Top2Loss 的同类检查留到步骤 8 扩展前，不阻塞 E02/E03）。下一步 = v3 步骤 6：E02/E03 正式对照（1000 epochs、5 划分、对照 Table 3(e)）。
+
+**影响范围：** 无代码修改；新增一个检查脚本与两份报告。
+
+---
+
+## 2026-09-22（晚） ｜ 闸门 A1 通过 ｜ E01a/E01b 短跑完成（v3 步骤 4）
+
+**范围确认：** 按用户指示，当前仅执行阶段 A（论文复现）；B（LR 扩展）/ C（联邦）保持挂起，阶段闸门隔离不变，协议无需改动。
+
+**E01a（BP smoke，先跑）：** CoraML / GCN / 2 层 / 1 run / 20 epochs，GPU。退出码 0；结果 JSON perf = 0.290484（BP 原生 0–1 比例，即 29.05%；官方汇总打印会在这个小数后面直接拼 "%" 字样，再次印证 v3 的单位警告）；显著高于 7 类随机水平 14.3%，学习确认。BP 的 best_val_epoch 字段是代码里从未回填的静态 -1 占位（train_backprop.py:60）；选模型功能本身正常——验证每 2 epoch 一次，EarlyStopping 在内存保存最佳验证状态并在测试前恢复（train_backprop.py:160-165）。
+
+**E01b（SF smoke）：** 同配置，每层 20 epochs。退出码 0；两层均跑满 20 epochs（train_epochs "19-19"，此前 stdout 中"第二层停在 epoch 9"是 tqdm 与 stdout 缓冲交错的显示假象，以 JSON 为准）；单层 35.73% → 两层概率融合 62.44%；SF 按层结束各写出一个结果文件（num_layers1 / num_layers2），最终结果以 num_layers2 为准。
+
+**新环境要求（实测确认，影响所有后续 GPU 运行）：** 必须先 `export CUBLAS_WORKSPACE_CONFIG=:4096:8`。官方代码对 GCN/SAGE 启用 `torch.use_deterministic_algorithms(True)`，CUDA ≥ 10.2 下 cuBLAS 不设此变量会直接抛 RuntimeError（已用最小用例复现确认）。已写入 environment.json；此为环境变量要求，未修改任何官方代码。
+
+**状态：** 闸门 A1（官方代码通路）通过——原样入口运行成功，数据/划分/日志/结果 JSON 可重复产出。下一步：v3 步骤 5 方法检查（协议 §9 之 7），随后步骤 6 正式对照（E02/E03）。
+
+**影响范围：** 登记表 E01a/E01b 置 ✅ 并录入结果；environment.json 增加必需环境变量；无代码修改。
+
+---
+
+## 2026-09-22 ｜ 计划 v3 对齐审查 ｜ 判定：已完成步骤 1–2 可行，已小幅对齐
+
+**审查结论：** 新计划（`图神经网络无反向传播联邦学习_复现计划_v3.md`，三阶段 A 论文复现 / B LR 扩展 / C 联邦，含闸门 A0–A4/B/C）与已执行的路线**一致**，无返工项。协议更新至 v1.1。
+
+**v3 关键代码断言逐一核实（全部为真）：**
+
+- 种子公式 `seed×101 + run_i×3`（train_utils.py SeedManager）→ 10100/10103/10106/10109/10112 ✅
+- `num_runs` ↔ `split_i` 一一对应：5 次运行 = 5 个官方划分，非同划分多种子 ✅
+- 指标单位差异：SF 返回百分数（gnn_sf.py:259），BP 返回 0–1 比例（eval_utils.py:14）✅ → 汇总统一 `accuracy_pct`
+- 官方代码不落盘 best.pt（EarlyStopping 仅内存保存）✅ → E01 验收口径已改
+- 结果文件已存在即跳过、文件名不含 lr/epochs/hidden ✅ → 采纳 v3 的独立 exp-setting 命名规范
+- SF epochs 为每层语义；patience 按验证次数计；GAT 显式非确定性 ✅
+
+**运行时依赖补查（WSL2）：** torch_sparse 0.6.17、torch_scatter 2.1.1、torch_cluster 1.6.1 已随 pyg 2.2.0 安装；torch_spline_conv、pyg_lib 缺失但 GCN/SAGE/GAT 不需要；两入口 `--help` 正常；`args.device=cuda:0`；GATConv GPU 前向正常（v3 步骤 2 清单全部满足）。
+
+**数据审计补齐：** `reports/split_manifest_cora_ml.json`——CoraML 5 组划分两两互斥、并集 = 2995 全节点，15 个划分文件 SHA-256 已记录。
+
+**文档变更：**
+
+- `protocol.md` → v1.1：§6 补充重复方式（split↔run↔种子）、epochs/早停/GAT 确定性语义；§7 新增 best.pt 与结果复用两条差异；§8.1 补充单位差异与 accuracy_pct；§9 销号 1、5，新增 6（已闭）、7（步骤 5 待做）；§10 改为对齐 v3 步骤 1–8 与闸门 A0–A4。
+- `experiment_registry.md`：E01 拆为 E01a（BP smoke，先跑）+ E01b（SF smoke），采用 v3 的 exp-setting 命名。
+
+**结构差异说明（判定为等效偏离，保留现状）：** v3 §6.2 建议 reproduction/ 放在代码根目录内；本仓库代码根目录是只读快照（有逐文件校验），故 reproduction/ 位于仓库根，WSL 运行副本 `~/forwardgnn-run` 承担 v3 中"代码根目录"的运行角色。功能映射：protocol.md↔protocol.md、source_snapshot.sha256↔source_manifest.json、environment.json↔environment.txt+hardware.json、reports/↔reports/、checks/↔checks/。
+
+**其他备注：** v3 文档内的路径（D:/创新实践/forwardgnn-main/…）为旧目录布局；本仓库实际根为 D:\创新实践\The-reproduction-of-forwardgnn，代码快照位于 forwardgnn-main/the-source-code-of-forwardgnn-main/。执行时一律以 environment.json 的 locations 为准。
+
+**影响范围：** 无返工；E01a/E01b 具备执行条件。
+
 ## 2026-09-21 ｜ 步骤 2 完成 ｜ WSL2 环境与数据就绪
 
 **环境（记录见 `reports/environment.json`）：**
