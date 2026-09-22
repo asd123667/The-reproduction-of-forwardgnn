@@ -1,0 +1,57 @@
+{
+  "record_date": "2026-09-21",
+  "purpose": "ForwardGNN 复现步骤 2 环境记录（对应 protocol §5、§9）",
+  "host_os": "Windows 11 (build 26100) + WSL2",
+  "wsl": {
+    "distro": "Ubuntu 26.04 (Resolute Raccoon)",
+    "kernel": "6.18.33.2-microsoft-standard-WSL2",
+    "wsl_version": 2
+  },
+  "gpu": {
+    "model": "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "vram_mb": 8188,
+    "windows_driver": "560.94",
+    "cuda_capability": "sm_89 (Ada)，PyTorch 1.13.1+cu117 轮子经 PTX JIT 运行，2026-09-21 实测 matmul 正常",
+    "cuda_runtime_in_torch": "11.7"
+  },
+  "env_manager": {
+    "conda": "~/miniconda3（conda 26.3.2），环境名 ForwardLearningGNN，安装方式与官方 install/install_packages.sh 一致",
+    "activate": "source ~/miniconda3/etc/profile.d/conda.sh && conda activate ForwardLearningGNN"
+  },
+  "python": "3.8.20",
+  "key_packages": {
+    "torch": "1.13.1",
+    "torchvision": "0.14.1",
+    "torchaudio": "0.13.1",
+    "torch-geometric": "2.2.0",
+    "numpy": "1.19.2",
+    "scipy": "1.6.2",
+    "scikit-learn": "1.2.1",
+    "tqdm": "4.67.1"
+  },
+  "verification_2026_09_21": {
+    "torch_cuda_available": true,
+    "gpu_matmul_kernel": "OK（sm_89 经 PTX JIT）",
+    "pyg_import": "OK (2.2.0)",
+    "dataset_cora_ml": {
+      "nodes": 2995, "features": 2879, "classes": 7, "edges": 16316,
+      "matches_paper_table2": true
+    },
+    "official_datasplit_loaded": {
+      "train": 1916, "val": 480, "test": 599,
+      "ratio": [0.64, 0.16, 0.2],
+      "source": "github.com/NamyongPark/forwardgnn-datasplits，150 个划分文件已装入 ~/forwardgnn-run/datasplits/"
+    },
+    "features_finite": true
+  },
+  "locations": {
+    "wsl_home": "/home/pyh",
+    "repo_clone": "~/The-reproduction-of-forwardgnn（git，只读参照，commit b702c87）",
+    "run_copy": "~/forwardgnn-run（实验运行副本，已通过 LF 规范快照校验，datasplits 就位）",
+    "datasplits_repo": "~/forwardgnn-datasplits（上游克隆）"
+  },
+  "notes": [
+    "校验清单 reproduction/reports/source_snapshot.sha256 已重生成：以 git 存储形态（LF）为规范；Windows 工作区因 core.autocrlf=true 为 CRLF，其字节校验需按规范化内容理解（详见 CHANGELOG 2026-09-21 条目）",
+    "论文硬件为 H100/CentOS，本机为 RTX 4060/WSL2；显存绝对值不可比，只比较相对趋势（protocol §6）"
+  ]
+}
