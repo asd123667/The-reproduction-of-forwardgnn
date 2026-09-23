@@ -4,6 +4,24 @@
 
 ---
 
+## 2026-09-23 ｜ 测量工具入库 ｜ tools/ 建立（对应 v3 §6.2）
+
+**新增：**
+
+- `tools/mem_wrap.py`：独立进程运行官方训练脚本并记录峰值显存（`torch.cuda.max_memory_allocated/reserved`），追加写入运行副本 `results/resource_log.csv`；不改官方代码。对应 v3 计划 §6.2 的 `tools/profile_run.py` 功能位。
+- `tools/summarize_resources.py`：汇总 8 组（BP/SF × 1–4 层）的准确率与显存，输出终端对照表并写出 `results/resource_summary.csv`；含"进程口径 M(L)/M(1)"与"扣除常驻输入的修正比例"两列，后者用于与论文 Table 4 口径近似对齐。对应 `tools/summarize_results.py` 功能位。
+
+**修正（重要，若已按此前消息手创建过旧版请用本版覆盖）：** 初版 `mem_wrap.py`（对话中给出的版本）把 `resource_log.csv` 写到当前目录 `src/results/` 下，与汇总脚本读取的 `results/` 根不一致；入库版改为按训练脚本位置定位官方 results 根（`src/../results`），与 CWD 无关。
+
+**部署到 WSL 运行副本：**
+
+```bash
+cp "/mnt/d/创新实践/The-reproduction-of-forwardgnn/reproduction/tools/mem_wrap.py" ~/forwardgnn-run/src/
+cp "/mnt/d/创新实践/The-reproduction-of-forwardgnn/reproduction/tools/summarize_resources.py" ~/forwardgnn-run/src/
+```
+
+**影响范围：** 仅新增工具，不影响协议与已完成实验结果。
+
 ## 2026-09-23 ｜ 闸门 A2 通过 ｜ E02/E03 正式对照完成，双双对齐论文
 
 **E02（BP-GCN，CoraML，2 层，1000 epochs，5 官方划分）：** 逐 split 84.98 / 87.31 / 87.15 / 87.15 / 87.81 → **86.88 ± 0.98**；论文 Table 3(e) 86.84±1.0，差 +0.04 pp。原始 perf 为 0–1 比例，汇总时 ×100（accuracy_pct 约定）。

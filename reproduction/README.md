@@ -22,6 +22,9 @@ reproduction/
   configs/                   # 实验启动配置与脚本副本（步骤 2 起填充）
   data/                      # 数据与划分相关记录（数据本体由官方代码按其规则下载）
   checks/                    # 关键行为核对脚本与记录（步骤 3 起填充）
+  tools/                     # 可复用测量与汇总工具（对应 v3 计划 §6.2）
+    mem_wrap.py              #   独立进程运行官方训练脚本并记录峰值显存 → results/resource_log.csv
+    summarize_resources.py   #   汇总显存+各深度准确率 → results/resource_summary.csv 与终端表格
   runs/                      # 按实验编号保存日志、模型与结果（步骤 4 起填充）
   reports/
     protocol.md              # 复现协议（唯一有效协议）
