@@ -46,6 +46,13 @@ def main():
         if torch.cuda.is_available():
             alloc = torch.cuda.max_memory_allocated() / 2**20
             reserved = torch.cuda.max_memory_reserved() / 2**20
+            if status == "ok" and alloc < 0.5:
+                # CUDA 可用但全程零分配：训练几乎肯定被整体跳过（结果文件已存在），
+                # 或用了 --gpu -1 走 CPU。两种情况都不构成 GPU 显存测量，不写 ok 行。
+                status = "skipped-no-training"
+                print("\n[MEM-WARN] CUDA 峰值分配≈0：本次没有发生 GPU 训练"
+                      "（结果已存在被跳过，或使用了 CPU）。本行不记为 ok；"
+                      "如确要重测显存，请加 --overwrite-result 重跑。")
         else:
             alloc = reserved = -1.0
         print(f"\n[MEM] setting={setting} peak_alloc_MiB={alloc:.1f} "

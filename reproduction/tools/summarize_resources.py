@@ -23,7 +23,13 @@ root = sys.argv[1] if len(sys.argv) > 1 else os.path.normpath(
 DATA_MB = {"bp": 34.8, "sf": 35.0}
 
 mem = {}
-for r in csv.DictReader(open(os.path.join(root, "resource_log.csv"))):
+log = os.path.join(root, "resource_log.csv")
+if not os.path.exists(log):
+    print(f"没有找到 {log}")
+    print("请先用 mem_wrap.py 跑完测量实验（部署见 reproduction/CHANGELOG 2026-09-23 条目），")
+    print("或把 results 根目录作为参数传入：python3 summarize_resources.py <results_root>")
+    sys.exit(1)
+for r in csv.DictReader(open(log)):
     if r["status"] == "ok":
         mem[r["setting"]] = float(r["peak_alloc_MiB"])
 
